@@ -141,24 +141,26 @@ function HistorialEmpleado() {
       </Box>
 
       <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Fecha</TableCell>
-            <TableCell>Entrada</TableCell>
-            <TableCell>Salida</TableCell>
-            <TableCell>Horas</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {currentRows.map((r, i) => (
-            <TableRow key={i}>
-              <TableCell>{r.checkIn ? r.checkIn.toLocaleDateString() : '-'}</TableCell>
-              <TableCell>{r.checkIn ? r.checkIn.toLocaleTimeString() : '-'}</TableCell>
-              <TableCell>{r.checkOut ? r.checkOut.toLocaleTimeString() : '-'}</TableCell>
-              <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
+ <TableHead>
+  <TableRow>
+    <TableCell>Fecha</TableCell>
+    <TableCell>Entrada</TableCell>
+    <TableCell>Salida</TableCell>
+    <TableCell>Horas</TableCell>
+    <TableCell>Nota</TableCell> {/* ✅ nueva columna */}
+  </TableRow>
+</TableHead>
+<TableBody>
+  {currentRows.map((r, i) => (
+    <TableRow key={i}>
+      <TableCell>{r.checkIn ? r.checkIn.toLocaleDateString() : '-'}</TableCell>
+      <TableCell>{r.checkIn ? r.checkIn.toLocaleTimeString() : '-'}</TableCell>
+      <TableCell>{r.checkOut ? r.checkOut.toLocaleTimeString() : '-'}</TableCell>
+      <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
+      <TableCell>{r.note || '-'}</TableCell> {/* ✅ celda nota */}
+    </TableRow>
+  ))}
+</TableBody>
       </Table>
 
       {totalPages > 1 && (
