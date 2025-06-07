@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button, MenuItem, Select, InputLabel, FormControl, Typography } from '@mui/material';
+import {
+  Button, MenuItem, Select, InputLabel, FormControl,
+  Typography, TextField
+} from '@mui/material';
 
 function Employee() {
   const [time, setTime] = useState(new Date());
@@ -7,6 +10,7 @@ function Employee() {
   const [employeeId, setEmployeeId] = useState('');
   const [lastEntry, setLastEntry] = useState(null);
   const [lastExit, setLastExit] = useState(null);
+  const [note, setNote] = useState(''); // ✅ Nota de asistencia
 
   // Reloj en vivo
   useEffect(() => {
@@ -14,7 +18,7 @@ function Employee() {
     return () => clearInterval(interval);
   }, []);
 
-  // Cargar empleados al inicio
+  // Cargar empleados
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
@@ -22,17 +26,17 @@ function Employee() {
       .catch(err => console.error('Error cargando empleados:', err));
   }, []);
 
-  // Cargar asistencia del mes al cambiar empleado
+  // Cargar asistencia del día actual
   useEffect(() => {
     if (!employeeId) return;
 
     const now = new Date();
-    const month = now.toISOString().slice(0, 7); // YYYY-MM
+    const month = now.toISOString().slice(0, 7);
 
     fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${employeeId}&month=${month}`)
       .then(res => res.json())
       .then(data => {
-        const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const today = now.toISOString().slice(0, 10);
         const todayRecords = data.records.filter(r => r.checkIn?.startsWith(today));
         if (todayRecords.length > 0) {
           const last = todayRecords[todayRecords.length - 1];
@@ -63,15 +67,20 @@ function Employee() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeId,
-          [type]: now
+          [type]: now,
+          note: note.trim()
         })
       });
+
       const data = await res.json();
+
       if (type === 'checkIn') {
         setLastEntry(now.toISOString());
       } else {
         setLastExit(now.toISOString());
       }
+
+      setNote(''); // ✅ Limpiar nota después de marcar
       alert('Marcado con éxito');
     } catch (error) {
       console.error('Error al marcar asistencia:', error);
@@ -88,9 +97,7 @@ function Employee() {
         <Select
           value={employeeId}
           label="Empleado"
-          onChange={(e) => {
-            setEmployeeId(e.target.value);
-          }}
+          onChange={(e) => setEmployeeId(e.target.value)}
         >
           {employees.map((emp) => (
             <MenuItem key={emp._id} value={emp._id}>
@@ -99,6 +106,14 @@ function Employee() {
           ))}
         </Select>
       </FormControl>
+
+      <TextField
+        fullWidth
+        label="Nota de asistencia (opcional)"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        style={{ marginBottom: 20 }}
+      />
 
       {lastEntry && (
         <Typography color="primary" style={{ marginBottom: 5 }}>
