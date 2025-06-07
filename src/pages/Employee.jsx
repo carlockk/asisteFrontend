@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Typography, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { Button, MenuItem, Select, InputLabel, FormControl, Typography } from '@mui/material';
 
 function Employee() {
   const [time, setTime] = useState(new Date());
   const [employees, setEmployees] = useState([]);
-  const [selected, setSelected] = useState('');
-  const [lastIn, setLastIn] = useState(null);
+  const [employeeId, setEmployeeId] = useState('');
+  const [lastEntry, setLastEntry] = useState(null);
+  const [lastExit, setLastExit] = useState(null);
+  const [disableEntry, setDisableEntry] = useState(false);
+  const [disableExit, setDisableExit] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
@@ -15,45 +18,86 @@ function Employee() {
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
-      .then(setEmployees);
+      .then(data => setEmployees(data))
+      .catch(err => console.error('Error cargando empleados:', err));
   }, []);
 
-  const mark = async (type) => {
-    if (!selected) return alert('Selecciona un empleado');
+  useEffect(() => {
+    if (!employeeId) return;
 
     const now = new Date();
-    const payload = {
-      employeeId: selected,
-      [type]: now
-    };
+    const month = now.toISOString().slice(0, 7); // YYYY-MM
 
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${employeeId}&month=${month}`)
+      .then(res => res.json())
+      .then(data => {
+        const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const todayRecords = data.records.filter(r => r.checkIn?.startsWith(today));
+        if (todayRecords.length > 0) {
+          const last = todayRecords[todayRecords.length - 1];
+          setLastEntry(last.checkIn);
+          setLastExit(last.checkOut || null);
+        } else {
+          setLastEntry(null);
+          setLastExit(null);
+        }
+      })
+      .catch(err => {
+        console.error('Error cargando asistencia:', err);
+        setLastEntry(null);
+        setLastExit(null);
+      });
+  }, [employeeId]);
 
-    const data = await res.json();
-
-    if (type === 'checkIn') {
-      setLastIn(now);
+  const mark = async (type) => {
+    if (!employeeId) {
+      alert('Selecciona un empleado antes de marcar.');
+      return;
     }
 
-    alert(`Marcado de ${type === 'checkIn' ? 'entrada' : 'salida'} exitoso`);
+    try {
+      const now = new Date();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          [type]: now
+        })
+      });
+      const data = await res.json();
+
+      if (type === 'checkIn') {
+        setLastEntry(now.toISOString());
+        setDisableEntry(true);
+        setTimeout(() => setDisableEntry(false), 60000); // 1 minuto
+      } else {
+        setLastExit(now.toISOString());
+        setDisableExit(true);
+        setTimeout(() => setDisableExit(false), 60000); // 1 minuto
+      }
+
+      alert('Marcado con éxito');
+    } catch (error) {
+      console.error('Error al marcar asistencia:', error);
+      alert('Error al marcar asistencia');
+    }
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <Typography variant="h4" gutterBottom>{time.toLocaleTimeString()}</Typography>
+      <h2>{time.toLocaleTimeString()}</h2>
 
-      <FormControl fullWidth>
+      <FormControl fullWidth style={{ marginBottom: 20 }}>
         <InputLabel>Selecciona un empleado</InputLabel>
         <Select
-          value={selected}
+          value={employeeId}
           label="Empleado"
-          onChange={e => setSelected(e.target.value)}
+          onChange={(e) => {
+            setEmployeeId(e.target.value);
+          }}
         >
-          {employees.map(emp => (
+          {employees.map((emp) => (
             <MenuItem key={emp._id} value={emp._id}>
               {emp.firstName} {emp.lastName}
             </MenuItem>
@@ -61,16 +105,33 @@ function Employee() {
         </Select>
       </FormControl>
 
-      {lastIn && (
-        <Typography variant="body2" sx={{ mt: 2, color: 'gray' }}>
-          👉 Última entrada: {new Date(lastIn).toLocaleTimeString()}
+      {lastEntry && (
+        <Typography color="primary" style={{ marginBottom: 5 }}>
+          👉 Última entrada: {new Date(lastEntry).toLocaleTimeString()}
+        </Typography>
+      )}
+      {lastExit && (
+        <Typography color="secondary" style={{ marginBottom: 20 }}>
+          👉 Última salida: {new Date(lastExit).toLocaleTimeString()}
         </Typography>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="contained" disabled={!selected} onClick={() => mark('checkIn')}>Entrada</Button>
-        <Button variant="contained" disabled={!selected} onClick={() => mark('checkOut')}>Salida</Button>
-      </div>
+      <Button
+        variant="contained"
+        onClick={() => mark('checkIn')}
+        disabled={!employeeId || disableEntry}
+      >
+        Entrada
+      </Button>
+
+      <Button
+        variant="contained"
+        onClick={() => mark('checkOut')}
+        disabled={!employeeId || disableExit}
+        style={{ marginLeft: 10 }}
+      >
+        Salida
+      </Button>
     </div>
   );
 }
