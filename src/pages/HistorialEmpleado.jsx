@@ -8,19 +8,30 @@ import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [dates, setDates] = useState([]);
+  const [range, setRange] = useState([]); // desde/hasta
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (dates.length === 0 || !id) return;
+    if (!id || range.length !== 2) return;
 
-    const formattedDates = dates.map(d => d.toISOString().split('T')[0]);
+    // generar lista de fechas entre start y end
+    const start = range[0];
+    const end = range[1];
+    const dates = [];
+
+    for (
+      let d = new Date(start);
+      d <= end;
+      d.setDate(d.getDate() + 1)
+    ) {
+      dates.push(new Date(d).toISOString().split('T')[0]);
+    }
 
     fetch(`${import.meta.env.VITE_API_URL}/attendance/filter`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: id, dates: formattedDates })
+      body: JSON.stringify({ employeeId: id, dates })
     })
       .then(res => res.json())
       .then(data => {
@@ -30,33 +41,34 @@ function HistorialEmpleado() {
           return;
         }
 
-        const processed = data.map(r => {
+        const enriched = data.map(r => {
           const checkIn = r.checkIn ? new Date(r.checkIn) : null;
           const checkOut = r.checkOut ? new Date(r.checkOut) : null;
           let totalHours = r.totalHours;
 
-          if (checkIn && checkOut && (typeof totalHours === 'undefined')) {
-            const diffMs = checkOut - checkIn;
-            totalHours = diffMs / (1000 * 60 * 60); // ms to hours
+          if (!totalHours && checkIn && checkOut) {
+            const diff = checkOut - checkIn;
+            totalHours = diff / (1000 * 60 * 60);
           }
 
           return { ...r, checkIn, checkOut, totalHours: totalHours || 0 };
         });
 
-        setRecords(processed);
-        const sum = processed.reduce((acc, r) => acc + (r.totalHours || 0), 0);
+        setRecords(enriched);
+        const sum = enriched.reduce((acc, r) => acc + (r.totalHours || 0), 0);
         setTotal(sum);
       });
-  }, [dates, id]);
+  }, [id, range]);
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
 
       <Flatpickr
-        options={{ mode: 'multiple', dateFormat: 'Y-m-d' }}
-        onChange={setDates}
-        placeholder="Selecciona fechas"
+        options={{ mode: 'range', dateFormat: 'Y-m-d' }}
+        onChange={setRange}
+        placeholder="Selecciona rango de fechas"
+        className="form-control"
       />
 
       <Table sx={{ mt: 3 }}>
@@ -71,17 +83,19 @@ function HistorialEmpleado() {
         <TableBody>
           {records.map((r, i) => (
             <TableRow key={i}>
-              <TableCell>{r.checkIn?.toLocaleDateString() || '-'}</TableCell>
-              <TableCell>{r.checkIn?.toLocaleTimeString() || '-'}</TableCell>
-              <TableCell>{r.checkOut?.toLocaleTimeString() || '-'}</TableCell>
-              <TableCell>{r.totalHours.toFixed(2)}</TableCell>
+              <TableCell>{r.checkIn ? new Date(r.checkIn).toLocaleDateString() : '-'}</TableCell>
+              <TableCell>{r.checkIn ? new Date(r.checkIn).toLocaleTimeString() : '-'}</TableCell>
+              <TableCell>{r.checkOut ? new Date(r.checkOut).toLocaleTimeString() : '-'}</TableCell>
+              <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
       <Box mt={2}>
-        <Typography><strong>Total Horas:</strong> {total.toFixed(2)} hrs</Typography>
+        <Typography variant="subtitle1">
+          <strong>Total Horas:</strong> {total.toFixed(2)} hrs
+        </Typography>
       </Box>
     </Box>
   );
