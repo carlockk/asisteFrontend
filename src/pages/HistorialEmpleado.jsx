@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Select, MenuItem, FormControl, InputLabel,
-  Table, TableBody, TableCell, TableHead, TableRow, Pagination
+  Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
+  Pagination, Button
 } from '@mui/material';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/material_blue.css';
@@ -9,8 +9,6 @@ import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
   const [records, setRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [range, setRange] = useState([]);
@@ -18,11 +16,14 @@ function HistorialEmpleado() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 15;
 
-  // Cargar datos por mes y año (cuando no hay rango seleccionado)
+  // Cargar historial mensual por defecto
   useEffect(() => {
     if (!id || range.length === 2) return;
 
-    const formattedMonth = `${year}-${String(month).padStart(2, '0')}`;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const formattedMonth = `${year}-${month}`;
 
     fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${formattedMonth}`)
       .then(res => res.json())
@@ -33,8 +34,11 @@ function HistorialEmpleado() {
             checkIn: r.checkIn ? new Date(r.checkIn) : null,
             checkOut: r.checkOut ? new Date(r.checkOut) : null
           }));
-          setRecords(enriched);
-          setFilteredRecords(enriched);
+
+          const ordered = [...enriched].sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
+
+          setRecords(ordered);
+          setFilteredRecords(ordered);
           setTotal(data.total || 0);
         } else {
           setRecords([]);
@@ -48,9 +52,9 @@ function HistorialEmpleado() {
         setFilteredRecords([]);
         setTotal(0);
       });
-  }, [id, month, year, range]);
+  }, [id, range]);
 
-  // Si hay rango seleccionado, usa POST /attendance/filter
+  // Cargar historial por rango
   useEffect(() => {
     if (!id || range.length !== 2) return;
 
@@ -89,61 +93,51 @@ function HistorialEmpleado() {
           return { ...r, checkIn, checkOut, totalHours: totalHours || 0 };
         });
 
-        setRecords(enriched);
-        setFilteredRecords(enriched);
-        const sum = enriched.reduce((acc, r) => acc + (r.totalHours || 0), 0);
+        const ordered = [...enriched].sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
+
+        setRecords(ordered);
+        setFilteredRecords(ordered);
+        const sum = ordered.reduce((acc, r) => acc + (r.totalHours || 0), 0);
         setTotal(sum);
-        setCurrentPage(1); // reset page
+        setCurrentPage(1);
       });
   }, [id, range]);
 
-  // Calcular registros por página
+  // Paginación
   const indexOfLast = currentPage * rowsPerPage;
   const indexOfFirst = indexOfLast - rowsPerPage;
   const currentRows = filteredRecords.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
 
+  const limpiarFiltro = () => {
+    setRange([]);
+    setFilteredRecords(records);
+    setTotal(records.reduce((acc, r) => acc + (r.totalHours || 0), 0));
+    setCurrentPage(1);
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
 
-      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
-        <FormControl>
-          <InputLabel>Mes</InputLabel>
-          <Select value={month} onChange={(e) => setMonth(e.target.value)} label="Mes">
-            {[...Array(12)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>{i + 1}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl>
-          <InputLabel>Año</InputLabel>
-          <Select value={year} onChange={(e) => setYear(e.target.value)} label="Año">
-            {[2024, 2025, 2026].map(y => (
-              <MenuItem key={y} value={y}>{y}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
+      <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
         <Flatpickr
           options={{ mode: 'range', dateFormat: 'Y-m-d' }}
-          onChange={(selectedDates) => {
-            setRange(selectedDates);
-            if (selectedDates.length !== 2) {
-              setFilteredRecords(records);
-              setTotal(records.reduce((acc, r) => acc + (r.totalHours || 0), 0));
-            }
-          }}
-          placeholder="Filtrar por rango"
+          onChange={(selectedDates) => setRange(selectedDates)}
+          placeholder="Selecciona rango de fechas"
           className="flatpickr-input"
           style={{
             padding: '16.5px 14px',
             border: '1px solid #c4c4c4',
             borderRadius: 4,
-            minWidth: 180
+            minWidth: 220
           }}
         />
+        {range.length > 0 && (
+          <Button onClick={limpiarFiltro} color="secondary" variant="outlined">
+            Limpiar Filtro
+          </Button>
+        )}
       </Box>
 
       <Table>
