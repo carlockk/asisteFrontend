@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  Modal,
+  Paper,
+  useTheme,
+  Container
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Modal, Button, Box } from '@mui/material';
 import EmpleadoForm from '../components/EmpleadoForm';
 
 function Admin() {
+  const theme = useTheme();
+
   const [rows, setRows] = useState([]);
   const [openView, setOpenView] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
@@ -17,12 +27,15 @@ function Admin() {
     photo: null
   });
 
+  // 🔁 Cargar empleados
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
-      .then(setRows);
+      .then(setRows)
+      .catch(err => console.error("Error cargando empleados:", err));
   }, []);
 
+  // ✅ Crear nuevo empleado
   const handleCreate = async () => {
     const formData = new FormData();
     for (const key in newEmp) {
@@ -48,21 +61,30 @@ function Admin() {
   };
 
   const columns = [
-    { field: 'firstName', headerName: 'Nombre', width: 130 },
-    { field: 'lastName', headerName: 'Apellido', width: 130 },
-    { field: 'identityNumber', headerName: 'ID', width: 100 },
-    { field: 'phone', headerName: 'Teléfono', width: 130 },
-    { field: 'email', headerName: 'Correo', width: 180 }
+    { field: 'firstName', headerName: 'Nombre', flex: 1 },
+    { field: 'lastName', headerName: 'Apellido', flex: 1 },
+    { field: 'identityNumber', headerName: 'ID', flex: 0.5 },
+    { field: 'phone', headerName: 'Teléfono', flex: 1 },
+    { field: 'email', headerName: 'Correo', flex: 1.5 }
   ];
 
   return (
-    <div>
-      <h2>Admin</h2>
-      <Button variant="contained" color="primary" sx={{ mt: 2 }}>
-  Crear Empleado
-</Button>
+    <Container sx={{ mt: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        Admin
+      </Typography>
 
-      <div style={{ height: 400, width: '100%', marginTop: 20 }}>
+      <Box display="flex" justifyContent="flex-end" mb={2}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setOpenCreate(true)}
+        >
+          Crear Empleado
+        </Button>
+      </Box>
+
+      <Paper elevation={3} sx={{ height: 400 }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -71,24 +93,45 @@ function Admin() {
             setSelected(params.row);
             setOpenView(true);
           }}
+          sx={{ border: 'none' }}
         />
-      </div>
+      </Paper>
 
+      {/* Modal Ver Empleado */}
       <Modal open={openView} onClose={() => setOpenView(false)}>
-        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
+        <Box
+          sx={{
+            background: '#fff',
+            p: 4,
+            m: '10% auto',
+            maxWidth: 400,
+            borderRadius: 2
+          }}
+        >
           {selected && (
             <>
-              <h3>{selected.firstName} {selected.lastName}</h3>
-              <p>ID: {selected.identityNumber}</p>
-              <p>Tel: {selected.phone}</p>
-              <p>Email: {selected.email}</p>
+              <Typography variant="h6">
+                {selected.firstName} {selected.lastName}
+              </Typography>
+              <Typography>ID: {selected.identityNumber}</Typography>
+              <Typography>Tel: {selected.phone}</Typography>
+              <Typography>Email: {selected.email}</Typography>
             </>
           )}
         </Box>
       </Modal>
 
+      {/* Modal Crear Empleado */}
       <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
-        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
+        <Box
+          sx={{
+            background: '#fff',
+            p: 4,
+            m: '5% auto',
+            maxWidth: 500,
+            borderRadius: 2
+          }}
+        >
           <EmpleadoForm
             formData={newEmp}
             onChange={setNewEmp}
@@ -96,7 +139,7 @@ function Admin() {
           />
         </Box>
       </Modal>
-    </div>
+    </Container>
   );
 }
 

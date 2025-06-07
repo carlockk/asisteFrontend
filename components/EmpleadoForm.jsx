@@ -1,6 +1,11 @@
-// src/components/EmpleadoForm.jsx
 import React from 'react';
-import { TextField, Button, Box, Typography } from '@mui/material';
+import {
+  TextField,
+  Button,
+  Grid,
+  Typography,
+  Box
+} from '@mui/material';
 
 function EmpleadoForm({ formData, onChange, onSubmit }) {
   const handleChange = (e) => {
@@ -12,42 +17,65 @@ function EmpleadoForm({ formData, onChange, onSubmit }) {
   };
 
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom>Nuevo Empleado</Typography>
+    <Box component="form" noValidate>
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        Nuevo Empleado
+      </Typography>
 
-      <TextField
-        fullWidth label="Nombre" name="firstName" margin="normal"
-        value={formData.firstName} onChange={handleChange}
-      />
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth label="Nombre" name="firstName"
+            value={formData.firstName} onChange={handleChange}
+          />
+        </Grid>
 
-      <TextField
-        fullWidth label="Apellido" name="lastName" margin="normal"
-        value={formData.lastName} onChange={handleChange}
-      />
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth label="Apellido" name="lastName"
+            value={formData.lastName} onChange={handleChange}
+          />
+        </Grid>
 
-      <TextField
-        fullWidth label="Identificación" name="identityNumber" margin="normal"
-        value={formData.identityNumber} onChange={handleChange}
-      />
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth label="Identificación" name="identityNumber"
+            value={formData.identityNumber} onChange={handleChange}
+          />
+        </Grid>
 
-      <TextField
-        fullWidth label="Teléfono" name="phone" margin="normal"
-        value={formData.phone} onChange={handleChange}
-      />
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth label="Teléfono" name="phone"
+            value={formData.phone} onChange={handleChange}
+          />
+        </Grid>
 
-      <TextField
-        fullWidth label="Correo" name="email" margin="normal"
-        value={formData.email} onChange={handleChange}
-      />
+        <Grid item xs={12}>
+          <TextField
+            fullWidth label="Correo electrónico" name="email"
+            value={formData.email} onChange={handleChange}
+          />
+        </Grid>
 
-      <Button component="label" sx={{ mt: 2 }}>
-        Subir Foto (opcional)
-        <input hidden type="file" name="photo" accept="image/*" onChange={handleChange} />
-      </Button>
+        <Grid item xs={12}>
+          <Button component="label" variant="outlined" fullWidth>
+            Subir Foto (opcional)
+            <input hidden type="file" name="photo" accept="image/*" onChange={handleChange} />
+          </Button>
+        </Grid>
 
-      <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={onSubmit}>
-        Guardar Empleado
-      </Button>
+        <Grid item xs={12}>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            onClick={onSubmit}
+          >
+            Guardar Empleado
+          </Button>
+        </Grid>
+      </Grid>
     </Box>
   );
 }
