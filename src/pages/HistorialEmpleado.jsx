@@ -1,66 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Select, MenuItem, FormControl, InputLabel, Table,
-  TableBody, TableCell, TableHead, TableRow
+  Box, Typography, Table, TableBody, TableCell, TableHead, TableRow
 } from '@mui/material';
+import Flatpickr from 'react-flatpickr';
+import 'flatpickr/dist/themes/material_blue.css';
 import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [dates, setDates] = useState([]);
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (!id) return;
+    if (dates.length === 0) return;
 
-    const formattedMonth = `${year}-${String(month).padStart(2, '0')}`;
+    const formattedDates = dates.map(d => d.toISOString().split('T')[0]);
 
-    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${formattedMonth}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`Error ${res.status}`);
-        return res.json();
-      })
+    fetch(`${import.meta.env.VITE_API_URL}/attendance/filter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: id, dates: formattedDates })
+    })
+      .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data.records)) {
-          setRecords(data.records);
-          setTotal(data.total || 0);
+        if (Array.isArray(data)) {
+          setRecords(data);
+          const sum = data.reduce((acc, r) => acc + (r.totalHours || 0), 0);
+          setTotal(sum);
         } else {
           setRecords([]);
           setTotal(0);
         }
-      })
-      .catch(err => {
-        console.error('Error cargando historial:', err);
-        setRecords([]);
-        setTotal(0);
       });
-  }, [id, month, year]);
+  }, [dates, id]);
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
-      <Box display="flex" gap={2} mb={2}>
-        <FormControl>
-          <InputLabel>Mes</InputLabel>
-          <Select value={month} onChange={(e) => setMonth(e.target.value)} label="Mes">
-            {[...Array(12)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>{i + 1}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl>
-          <InputLabel>Año</InputLabel>
-          <Select value={year} onChange={(e) => setYear(e.target.value)} label="Año">
-            {[2024, 2025, 2026].map(y => (
-              <MenuItem key={y} value={y}>{y}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      <Table>
+      <Flatpickr
+        options={{ mode: 'multiple', dateFormat: 'Y-m-d' }}
+        onChange={setDates}
+        placeholder="Selecciona fechas"
+      />
+      <Table sx={{ mt: 3 }}>
         <TableHead>
           <TableRow>
             <TableCell>Fecha</TableCell>
@@ -78,17 +61,14 @@ function HistorialEmpleado() {
                 <TableCell>{checkIn?.toLocaleDateString() || '-'}</TableCell>
                 <TableCell>{checkIn?.toLocaleTimeString() || '-'}</TableCell>
                 <TableCell>{checkOut?.toLocaleTimeString() || '-'}</TableCell>
-                <TableCell>{r.totalHours?.toFixed(2) || '0.00'}</TableCell>
+                <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-
       <Box mt={2}>
-        <Typography variant="subtitle1">
-          <strong>Total Horas:</strong> {total.toFixed(2)} hrs
-        </Typography>
+        <Typography><strong>Total Horas:</strong> {total.toFixed(2)} hrs</Typography>
       </Box>
     </Box>
   );
