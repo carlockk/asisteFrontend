@@ -1,47 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Select, MenuItem, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import {
+  Box, Typography, Select, MenuItem, FormControl, InputLabel, Table,
+  TableBody, TableCell, TableHead, TableRow
+} from '@mui/material';
 import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [registros, setRegistros] = useState([]);
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [anio, setAnio] = useState(new Date().getFullYear());
-  const [totalHoras, setTotalHoras] = useState(0);
-  const [valorHora, setValorHora] = useState(0);
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [records, setRecords] = useState([]);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    const mesStr = mes < 10 ? `0${mes}` : mes;
-    const fecha = `${anio}-${mesStr}`;
-    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${fecha}`)
+    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${year}-${String(month).padStart(2, '0')}`)
       .then(res => res.json())
       .then(data => {
-        setRegistros(data.records);
-        setTotalHoras(data.total);
-        if (data.records[0]?.employee?.hourlyRate) {
-          setValorHora(data.records[0].employee.hourlyRate);
+        if (Array.isArray(data.records)) {
+          setRecords(data.records);
+          setTotal(data.total || 0);
+        } else {
+          setRecords([]);
+          setTotal(0);
         }
+      })
+      .catch(err => {
+        console.error('Error cargando historial:', err);
+        setRecords([]);
+        setTotal(0);
       });
-  }, [id, mes, anio]);
+  }, [id, month, year]);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
-
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box display="flex" gap={2} mb={2}>
         <FormControl>
           <InputLabel>Mes</InputLabel>
-          <Select value={mes} label="Mes" onChange={e => setMes(e.target.value)}>
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} label="Mes">
             {[...Array(12)].map((_, i) => (
-              <MenuItem key={i+1} value={i+1}>{i+1}</MenuItem>
+              <MenuItem key={i + 1} value={i + 1}>{i + 1}</MenuItem>
             ))}
           </Select>
         </FormControl>
-
         <FormControl>
           <InputLabel>Año</InputLabel>
-          <Select value={anio} label="Año" onChange={e => setAnio(e.target.value)}>
-            {[2024, 2025].map(y => (
+          <Select value={year} onChange={(e) => setYear(e.target.value)} label="Año">
+            {[2024, 2025, 2026].map(y => (
               <MenuItem key={y} value={y}>{y}</MenuItem>
             ))}
           </Select>
@@ -58,22 +63,23 @@ function HistorialEmpleado() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {registros.map(r => (
-            <TableRow key={r._id}>
-              <TableCell>{new Date(r.checkIn).toLocaleDateString()}</TableCell>
-              <TableCell>{new Date(r.checkIn).toLocaleTimeString()}</TableCell>
-              <TableCell>{r.checkOut ? new Date(r.checkOut).toLocaleTimeString() : '-'}</TableCell>
-              <TableCell>{r.totalHours?.toFixed(2)}</TableCell>
-            </TableRow>
-          ))}
+          {records.map((r, i) => {
+            const checkIn = r.checkIn ? new Date(r.checkIn) : null;
+            const checkOut = r.checkOut ? new Date(r.checkOut) : null;
+            return (
+              <TableRow key={i}>
+                <TableCell>{checkIn?.toLocaleDateString() || '-'}</TableCell>
+                <TableCell>{checkIn?.toLocaleTimeString() || '-'}</TableCell>
+                <TableCell>{checkOut?.toLocaleTimeString() || '-'}</TableCell>
+                <TableCell>{r.totalHours?.toFixed(2) || '0.00'}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
-      <Box sx={{ mt: 2 }}>
-        <Typography><strong>Total Horas:</strong> {totalHoras.toFixed(2)} hrs</Typography>
-        {valorHora > 0 && (
-          <Typography><strong>Total ganado:</strong> ${ (totalHoras * valorHora).toFixed(2) }</Typography>
-        )}
+      <Box mt={2}>
+        <Typography variant="subtitle1"><strong>Total Horas:</strong> {total.toFixed(2)} hrs</Typography>
       </Box>
     </Box>
   );

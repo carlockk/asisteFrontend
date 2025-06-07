@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
-  Modal,
-  Paper
+  DataGrid
+} from '@mui/x-data-grid';
+import {
+  Modal, Button, Box, Typography
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
 import EmpleadoForm from '../components/EmpleadoForm';
 
 function Admin() {
   const [rows, setRows] = useState([]);
+  const [openView, setOpenView] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
   const [selected, setSelected] = useState(null);
   const [newEmp, setNewEmp] = useState({
@@ -25,7 +24,8 @@ function Admin() {
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
-      .then(setRows);
+      .then(setRows)
+      .catch(() => setRows([]));
   }, []);
 
   const handleCreate = async () => {
@@ -59,16 +59,14 @@ function Admin() {
     { field: 'phone', headerName: 'Teléfono', width: 130 },
     { field: 'email', headerName: 'Correo', width: 180 },
     {
-      field: 'acciones',
-      headerName: 'Acciones',
-      width: 160,
+      field: 'historial',
+      headerName: 'Historial',
+      width: 150,
       renderCell: (params) => (
         <Button
           variant="outlined"
           size="small"
-          onClick={() =>
-            window.location.href = `/historial/${params.row._id}`
-          }
+          onClick={() => window.location.href = `/historial/${params.row._id}`}
         >
           Ver Historial
         </Button>
@@ -77,33 +75,39 @@ function Admin() {
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box p={3}>
       <Typography variant="h4" gutterBottom>Admin</Typography>
+      <Button variant="contained" onClick={() => setOpenCreate(true)}>
+        Crear Empleado
+      </Button>
 
-      <Box display="flex" justifyContent="flex-end" mb={2}>
-        <Button variant="contained" onClick={() => setOpenCreate(true)}>
-          Crear Empleado
-        </Button>
-      </Box>
-
-      <Paper elevation={3} sx={{ height: 400 }}>
+      <Box mt={3} style={{ height: 400, width: '100%' }}>
         <DataGrid
           rows={rows}
           columns={columns}
           getRowId={(row) => row._id}
-          onRowClick={(params) => setSelected(params.row)}
-          pageSize={100}
+          onRowClick={(params) => {
+            setSelected(params.row);
+            setOpenView(true);
+          }}
         />
-      </Paper>
+      </Box>
+
+      <Modal open={openView} onClose={() => setOpenView(false)}>
+        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
+          {selected && (
+            <>
+              <h3>{selected.firstName} {selected.lastName}</h3>
+              <p>ID: {selected.identityNumber}</p>
+              <p>Tel: {selected.phone}</p>
+              <p>Email: {selected.email}</p>
+            </>
+          )}
+        </Box>
+      </Modal>
 
       <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
-        <Box sx={{
-          background: '#fff',
-          padding: 3,
-          margin: '5% auto',
-          maxWidth: 500,
-          borderRadius: 2
-        }}>
+        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
           <EmpleadoForm
             formData={newEmp}
             onChange={setNewEmp}
