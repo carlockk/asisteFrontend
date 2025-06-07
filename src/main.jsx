@@ -1,6 +1,5 @@
-// src/main.jsx
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Admin from './pages/Admin';
 import Employee from './pages/Employee';
@@ -19,6 +18,6 @@ function App() {
   );
 }
 
-const container = document.getElementById('root');
-const root = createRoot(container);
+// ✅ React 18+ mounting method
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
