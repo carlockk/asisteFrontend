@@ -13,7 +13,7 @@ function HistorialEmpleado() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (dates.length === 0) return;
+    if (dates.length === 0 || !id) return;
 
     const formattedDates = dates.map(d => d.toISOString().split('T')[0]);
 
@@ -24,25 +24,41 @@ function HistorialEmpleado() {
     })
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setRecords(data);
-          const sum = data.reduce((acc, r) => acc + (r.totalHours || 0), 0);
-          setTotal(sum);
-        } else {
+        if (!Array.isArray(data)) {
           setRecords([]);
           setTotal(0);
+          return;
         }
+
+        const processed = data.map(r => {
+          const checkIn = r.checkIn ? new Date(r.checkIn) : null;
+          const checkOut = r.checkOut ? new Date(r.checkOut) : null;
+          let totalHours = r.totalHours;
+
+          if (checkIn && checkOut && (typeof totalHours === 'undefined')) {
+            const diffMs = checkOut - checkIn;
+            totalHours = diffMs / (1000 * 60 * 60); // ms to hours
+          }
+
+          return { ...r, checkIn, checkOut, totalHours: totalHours || 0 };
+        });
+
+        setRecords(processed);
+        const sum = processed.reduce((acc, r) => acc + (r.totalHours || 0), 0);
+        setTotal(sum);
       });
   }, [dates, id]);
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
+
       <Flatpickr
         options={{ mode: 'multiple', dateFormat: 'Y-m-d' }}
         onChange={setDates}
         placeholder="Selecciona fechas"
       />
+
       <Table sx={{ mt: 3 }}>
         <TableHead>
           <TableRow>
@@ -53,20 +69,17 @@ function HistorialEmpleado() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {records.map((r, i) => {
-            const checkIn = r.checkIn ? new Date(r.checkIn) : null;
-            const checkOut = r.checkOut ? new Date(r.checkOut) : null;
-            return (
-              <TableRow key={i}>
-                <TableCell>{checkIn?.toLocaleDateString() || '-'}</TableCell>
-                <TableCell>{checkIn?.toLocaleTimeString() || '-'}</TableCell>
-                <TableCell>{checkOut?.toLocaleTimeString() || '-'}</TableCell>
-                <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
-              </TableRow>
-            );
-          })}
+          {records.map((r, i) => (
+            <TableRow key={i}>
+              <TableCell>{r.checkIn?.toLocaleDateString() || '-'}</TableCell>
+              <TableCell>{r.checkIn?.toLocaleTimeString() || '-'}</TableCell>
+              <TableCell>{r.checkOut?.toLocaleTimeString() || '-'}</TableCell>
+              <TableCell>{r.totalHours.toFixed(2)}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
+
       <Box mt={2}>
         <Typography><strong>Total Horas:</strong> {total.toFixed(2)} hrs</Typography>
       </Box>

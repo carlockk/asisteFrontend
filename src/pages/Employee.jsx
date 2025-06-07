@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Button, MenuItem, Select, InputLabel, FormControl, Typography } from '@mui/material';
+import {
+  Button, MenuItem, Select, InputLabel, FormControl, Typography
+} from '@mui/material';
 
 function Employee() {
   const [time, setTime] = useState(new Date());
@@ -31,7 +33,7 @@ function Employee() {
     fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${employeeId}&month=${month}`)
       .then(res => res.json())
       .then(data => {
-        const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const today = now.toISOString().slice(0, 10);
         const todayRecords = data.records.filter(r => r.checkIn?.startsWith(today));
         if (todayRecords.length > 0) {
           const last = todayRecords[todayRecords.length - 1];
@@ -50,10 +52,7 @@ function Employee() {
   }, [employeeId]);
 
   const mark = async (type) => {
-    if (!employeeId) {
-      alert('Selecciona un empleado antes de marcar.');
-      return;
-    }
+    if (!employeeId) return alert('Selecciona un empleado antes de marcar.');
 
     try {
       const now = new Date();
@@ -65,16 +64,18 @@ function Employee() {
           [type]: now
         })
       });
+
+      if (!res.ok) throw new Error('Error al registrar asistencia');
       const data = await res.json();
 
       if (type === 'checkIn') {
         setLastEntry(now.toISOString());
         setDisableEntry(true);
-        setTimeout(() => setDisableEntry(false), 60000); // 1 minuto
+        setTimeout(() => setDisableEntry(false), 60000);
       } else {
         setLastExit(now.toISOString());
         setDisableExit(true);
-        setTimeout(() => setDisableExit(false), 60000); // 1 minuto
+        setTimeout(() => setDisableExit(false), 60000);
       }
 
       alert('Marcado con éxito');
@@ -93,9 +94,7 @@ function Employee() {
         <Select
           value={employeeId}
           label="Empleado"
-          onChange={(e) => {
-            setEmployeeId(e.target.value);
-          }}
+          onChange={(e) => setEmployeeId(e.target.value)}
         >
           {employees.map((emp) => (
             <MenuItem key={emp._id} value={emp._id}>
