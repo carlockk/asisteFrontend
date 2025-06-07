@@ -41,35 +41,27 @@ function Employee() {
 
   const mark = async (type) => {
     if (!selected) return alert('Selecciona un empleado');
-
     const now = new Date();
+
     const body = type === 'checkIn'
       ? { employeeId: selected }
       : { employeeId: selected, checkOut: now };
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (res.ok && data._id) {
-        if (type === 'checkIn') {
-          setEntradaActiva(true);
-          setLastEntry(now);
-          alert('✅ Entrada registrada correctamente');
-        } else {
-          setEntradaActiva(false);
-          alert('✅ Salida registrada correctamente');
-        }
+    if (data._id) {
+      if (type === 'checkIn') {
+        setEntradaActiva(true);
+        setLastEntry(now);
       } else {
-        throw new Error(data.error || 'Ocurrió un error al guardar');
+        setEntradaActiva(false);
       }
-    } catch (error) {
-      alert(`❌ Error al registrar ${type === 'checkIn' ? 'entrada' : 'salida'}: ${error.message}`);
     }
   };
 
