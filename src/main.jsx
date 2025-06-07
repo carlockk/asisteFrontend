@@ -2,11 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from './theme'; // Asegúrate de que el archivo theme.js esté en src/
+import theme from './theme';
 
 import Admin from './pages/Admin';
 import Employee from './pages/Employee';
 import HistorialEmpleado from './pages/HistorialEmpleado';
+import Vacaciones from './pages/Vacaciones'; // ✅ NUEVA PÁGINA
 
 function App() {
   return (
@@ -15,12 +16,14 @@ function App() {
       <Router>
         <nav style={{ padding: '1rem', backgroundColor: '#fff', borderBottom: '1px solid #ccc' }}>
           <Link to="/" style={{ marginRight: '1rem' }}>Empleado</Link>
-          <Link to="/admin">Admin</Link>
+          <Link to="/admin" style={{ marginRight: '1rem' }}>Admin</Link>
+          <Link to="/vacaciones" style={{ marginRight: '1rem' }}>Vacaciones</Link> {/* ✅ NUEVO */}
         </nav>
         <Routes>
           <Route path="/" element={<Employee />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/historial/:id" element={<HistorialEmpleado />} />
+          <Route path="/vacaciones" element={<Vacaciones />} /> {/* ✅ NUEVO */}
         </Routes>
       </Router>
     </ThemeProvider>
