@@ -13,8 +13,15 @@ function HistorialEmpleado() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${year}-${String(month).padStart(2, '0')}`)
-      .then(res => res.json())
+    if (!id) return;
+
+    const formattedMonth = `${year}-${String(month).padStart(2, '0')}`;
+
+    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${formattedMonth}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (Array.isArray(data.records)) {
           setRecords(data.records);
@@ -79,7 +86,9 @@ function HistorialEmpleado() {
       </Table>
 
       <Box mt={2}>
-        <Typography variant="subtitle1"><strong>Total Horas:</strong> {total.toFixed(2)} hrs</Typography>
+        <Typography variant="subtitle1">
+          <strong>Total Horas:</strong> {total.toFixed(2)} hrs
+        </Typography>
       </Box>
     </Box>
   );
