@@ -6,6 +6,7 @@ import theme from './theme'; // Asegúrate de que el archivo theme.js esté en s
 
 import Admin from './pages/Admin';
 import Employee from './pages/Employee';
+import HistorialEmpleado from './pages/HistorialEmpleado';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Employee />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/historial/:id" element={<HistorialEmpleado />} />
         </Routes>
       </Router>
     </ThemeProvider>
