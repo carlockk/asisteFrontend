@@ -8,9 +8,10 @@ function Admin() {
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:3001/employees')
+    fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
-      .then(setRows);
+      .then(setRows)
+      .catch(err => console.error('Error cargando empleados:', err));
   }, []);
 
   const columns = [
@@ -25,10 +26,18 @@ function Admin() {
     <div>
       <h2>Admin</h2>
       <div style={{ height: 400, width: '100%' }}>
-        <DataGrid rows={rows} columns={columns} getRowId={(row) => row._id} onRowClick={(params)=>{setSelected(params.row);setOpen(true);}}/>
+        <DataGrid 
+          rows={rows} 
+          columns={columns} 
+          getRowId={(row) => row._id} 
+          onRowClick={(params) => {
+            setSelected(params.row);
+            setOpen(true);
+          }} 
+        />
       </div>
-      <Modal open={open} onClose={()=>setOpen(false)}>
-        <div style={{ background:'#fff', padding:20, margin:'10% auto', maxWidth:400 }}>
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div style={{ background: '#fff', padding: 20, margin: '10% auto', maxWidth: 400 }}>
           {selected && (
             <div>
               <h3>{selected.firstName} {selected.lastName}</h3>
