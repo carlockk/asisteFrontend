@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Button, MenuItem, Select, InputLabel, FormControl, Typography
-} from '@mui/material';
+import { Button, MenuItem, Select, InputLabel, FormControl, Typography } from '@mui/material';
 
 function Employee() {
   const [time, setTime] = useState(new Date());
@@ -9,14 +7,14 @@ function Employee() {
   const [employeeId, setEmployeeId] = useState('');
   const [lastEntry, setLastEntry] = useState(null);
   const [lastExit, setLastExit] = useState(null);
-  const [disableEntry, setDisableEntry] = useState(false);
-  const [disableExit, setDisableExit] = useState(false);
 
+  // Reloj en vivo
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // Cargar empleados al inicio
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/employees`)
       .then(res => res.json())
@@ -24,6 +22,7 @@ function Employee() {
       .catch(err => console.error('Error cargando empleados:', err));
   }, []);
 
+  // Cargar asistencia del mes al cambiar empleado
   useEffect(() => {
     if (!employeeId) return;
 
@@ -33,7 +32,7 @@ function Employee() {
     fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${employeeId}&month=${month}`)
       .then(res => res.json())
       .then(data => {
-        const today = now.toISOString().slice(0, 10);
+        const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
         const todayRecords = data.records.filter(r => r.checkIn?.startsWith(today));
         if (todayRecords.length > 0) {
           const last = todayRecords[todayRecords.length - 1];
@@ -52,10 +51,13 @@ function Employee() {
   }, [employeeId]);
 
   const mark = async (type) => {
-    if (!employeeId) return alert('Selecciona un empleado antes de marcar.');
+    if (!employeeId) {
+      alert('Selecciona un empleado antes de marcar.');
+      return;
+    }
 
+    const now = new Date();
     try {
-      const now = new Date();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,20 +66,12 @@ function Employee() {
           [type]: now
         })
       });
-
-      if (!res.ok) throw new Error('Error al registrar asistencia');
       const data = await res.json();
-
       if (type === 'checkIn') {
         setLastEntry(now.toISOString());
-        setDisableEntry(true);
-        setTimeout(() => setDisableEntry(false), 60000);
       } else {
         setLastExit(now.toISOString());
-        setDisableExit(true);
-        setTimeout(() => setDisableExit(false), 60000);
       }
-
       alert('Marcado con éxito');
     } catch (error) {
       console.error('Error al marcar asistencia:', error);
@@ -94,7 +88,9 @@ function Employee() {
         <Select
           value={employeeId}
           label="Empleado"
-          onChange={(e) => setEmployeeId(e.target.value)}
+          onChange={(e) => {
+            setEmployeeId(e.target.value);
+          }}
         >
           {employees.map((emp) => (
             <MenuItem key={emp._id} value={emp._id}>
@@ -115,18 +111,13 @@ function Employee() {
         </Typography>
       )}
 
-      <Button
-        variant="contained"
-        onClick={() => mark('checkIn')}
-        disabled={!employeeId || disableEntry}
-      >
+      <Button variant="contained" onClick={() => mark('checkIn')} disabled={!employeeId}>
         Entrada
       </Button>
-
       <Button
         variant="contained"
         onClick={() => mark('checkOut')}
-        disabled={!employeeId || disableExit}
+        disabled={!employeeId}
         style={{ marginLeft: 10 }}
       >
         Salida

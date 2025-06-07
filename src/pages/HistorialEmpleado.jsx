@@ -1,77 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Table, TableBody, TableCell, TableHead, TableRow
+  Box, Typography, Select, MenuItem, FormControl, InputLabel, Table,
+  TableBody, TableCell, TableHead, TableRow
 } from '@mui/material';
-import Flatpickr from 'react-flatpickr';
-import 'flatpickr/dist/themes/material_blue.css';
 import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [range, setRange] = useState([]); // desde/hasta
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (!id || range.length !== 2) return;
+    if (!id) return;
 
-    // generar lista de fechas entre start y end
-    const start = range[0];
-    const end = range[1];
-    const dates = [];
+    const formattedMonth = `${year}-${String(month).padStart(2, '0')}`;
 
-    for (
-      let d = new Date(start);
-      d <= end;
-      d.setDate(d.getDate() + 1)
-    ) {
-      dates.push(new Date(d).toISOString().split('T')[0]);
-    }
-
-    fetch(`${import.meta.env.VITE_API_URL}/attendance/filter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: id, dates })
-    })
-      .then(res => res.json())
+    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${formattedMonth}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
       .then(data => {
-        if (!Array.isArray(data)) {
+        if (Array.isArray(data.records)) {
+          setRecords(data.records);
+          setTotal(data.total || 0);
+        } else {
           setRecords([]);
           setTotal(0);
-          return;
         }
-
-        const enriched = data.map(r => {
-          const checkIn = r.checkIn ? new Date(r.checkIn) : null;
-          const checkOut = r.checkOut ? new Date(r.checkOut) : null;
-          let totalHours = r.totalHours;
-
-          if (!totalHours && checkIn && checkOut) {
-            const diff = checkOut - checkIn;
-            totalHours = diff / (1000 * 60 * 60);
-          }
-
-          return { ...r, checkIn, checkOut, totalHours: totalHours || 0 };
-        });
-
-        setRecords(enriched);
-        const sum = enriched.reduce((acc, r) => acc + (r.totalHours || 0), 0);
-        setTotal(sum);
+      })
+      .catch(err => {
+        console.error('Error cargando historial:', err);
+        setRecords([]);
+        setTotal(0);
       });
-  }, [id, range]);
+  }, [id, month, year]);
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
+      <Box display="flex" gap={2} mb={2}>
+        <FormControl>
+          <InputLabel>Mes</InputLabel>
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} label="Mes">
+            {[...Array(12)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>{i + 1}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl>
+          <InputLabel>Año</InputLabel>
+          <Select value={year} onChange={(e) => setYear(e.target.value)} label="Año">
+            {[2024, 2025, 2026].map(y => (
+              <MenuItem key={y} value={y}>{y}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-      <Flatpickr
-        options={{ mode: 'range', dateFormat: 'Y-m-d' }}
-        onChange={setRange}
-        placeholder="Selecciona rango de fechas"
-        className="form-control"
-      />
-
-      <Table sx={{ mt: 3 }}>
+      <Table>
         <TableHead>
           <TableRow>
             <TableCell>Fecha</TableCell>
@@ -81,14 +70,18 @@ function HistorialEmpleado() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {records.map((r, i) => (
-            <TableRow key={i}>
-              <TableCell>{r.checkIn ? new Date(r.checkIn).toLocaleDateString() : '-'}</TableCell>
-              <TableCell>{r.checkIn ? new Date(r.checkIn).toLocaleTimeString() : '-'}</TableCell>
-              <TableCell>{r.checkOut ? new Date(r.checkOut).toLocaleTimeString() : '-'}</TableCell>
-              <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
-            </TableRow>
-          ))}
+          {records.map((r, i) => {
+            const checkIn = r.checkIn ? new Date(r.checkIn) : null;
+            const checkOut = r.checkOut ? new Date(r.checkOut) : null;
+            return (
+              <TableRow key={i}>
+                <TableCell>{checkIn?.toLocaleDateString() || '-'}</TableCell>
+                <TableCell>{checkIn?.toLocaleTimeString() || '-'}</TableCell>
+                <TableCell>{checkOut?.toLocaleTimeString() || '-'}</TableCell>
+                <TableCell>{r.totalHours?.toFixed(2) || '0.00'}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
