@@ -58,9 +58,10 @@ function Admin() {
   return (
     <div>
       <h2>Admin</h2>
-      <Button variant="contained" onClick={() => setOpenCreate(true)}>
-        Crear Empleado
-      </Button>
+      <Button variant="contained" color="primary" sx={{ mt: 2 }}>
+  Crear Empleado
+</Button>
+
       <div style={{ height: 400, width: '100%', marginTop: 20 }}>
         <DataGrid
           rows={rows}
