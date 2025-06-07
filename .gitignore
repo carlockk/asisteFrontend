@@ -1,0 +1,31 @@
+# node_modules (dependencias locales)
+node_modules/
+
+# build de producción
+dist/
+
+# archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# archivos del sistema y de editores
+.DS_Store
+Thumbs.db
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs / editores
+.vscode/
+.idea/
+*.swp
+
+# sistema operativo
+*.log
+
+# local server settings
+*.local
