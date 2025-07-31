@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useState } from 'react';
 import {
   Box, TextField, Button, List, ListItem, IconButton, Typography
@@ -5,6 +6,9 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import axios from 'axios';
+
+// ...resto igual
+
 
 export default function AdminAseo({ usuario }) {
   const [items, setItems] = useState([]);

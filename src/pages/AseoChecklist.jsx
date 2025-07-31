@@ -1,8 +1,12 @@
+import React from 'react';
 import { useEffect, useState } from 'react';
 import {
   Checkbox, FormControlLabel, TextField, Button, Typography, Box
 } from '@mui/material';
 import axios from 'axios';
+
+// ...resto igual
+
 
 export default function AseoChecklist({ usuario }) {
   const [items, setItems] = useState([]);
