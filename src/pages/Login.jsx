@@ -4,10 +4,7 @@ import {
   Box, Button, TextField, Typography, Alert
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-// ...resto igual
-
+import api from '../api/axios'; // ✅ usamos instancia con baseURL
 
 export default function Login() {
   const navigate = useNavigate();
@@ -20,7 +17,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post('/auth/login', form);
+      const res = await api.post('/auth/login', form);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
       const rol = res.data.usuario.rol;

@@ -3,10 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   Checkbox, FormControlLabel, TextField, Button, Typography, Box
 } from '@mui/material';
-import axios from 'axios';
-
-// ...resto igual
-
+import api from '../api/axios';
 
 export default function AseoChecklist({ usuario }) {
   const [items, setItems] = useState([]);
@@ -15,7 +12,9 @@ export default function AseoChecklist({ usuario }) {
 
   useEffect(() => {
     const cargarItems = async () => {
-      const res = await axios.get('/api/aseo');
+      const res = await api.get('/api/aseo', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
       setItems(res.data);
     };
     cargarItems();
