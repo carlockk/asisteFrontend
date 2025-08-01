@@ -1,58 +1,101 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Box, Button, TextField, Typography, Alert
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios'; // ✅ usamos instancia con baseURL
+import api from '../api/axios'; // 👈 importamos tu instancia de axios
 
-export default function Login() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+function Login() {
+  const [correo, setCorreo] = useState('');
+  const [contraseña, setContraseña] = useState('');
   const [error, setError] = useState('');
-
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
+    setError('');
+
+    if (!correo || !contraseña) {
+      setError('Todos los campos son obligatorios');
+      return;
+    }
+
     try {
-      const res = await api.post('/auth/login', form);
+      const res = await api.post('/auth/login', { correo, contraseña });
+
+      // Guardar sesión
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
-      const rol = res.data.usuario.rol;
-      if (rol === 'admin') navigate('/admin');
-      else if (rol === 'gestor') navigate('/admin/aseo');
-      else navigate('/');
+      localStorage.setItem('usuario', JSON.stringify(res.data.user));
+
+      // Redirección según rol
+      const { rol } = res.data.user;
+      if (rol === 'admin') {
+        navigate('/admin');
+      } else if (rol === 'gestor') {
+        navigate('/admin/aseo');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      console.error('Login error:', err);
+      const msg =
+        err.response?.data?.error ||
+        'Error de conexión con el servidor';
+      setError(msg);
     }
   };
 
   return (
-    <Box maxWidth={400} mx="auto" mt={10} p={3} boxShadow={3} borderRadius={2}>
-      <Typography variant="h5" mb={2}>Iniciar Sesión</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <TextField
-        fullWidth
-        label="Correo"
-        name="email"
-        type="email"
-        value={form.email}
-        onChange={handleChange}
-        sx={{ mb: 2 }}
-      />
-      <TextField
-        fullWidth
-        label="Contraseña"
-        name="password"
-        type="password"
-        value={form.password}
-        onChange={handleChange}
-        sx={{ mb: 2 }}
-      />
-      <Button fullWidth variant="contained" onClick={handleLogin}>Ingresar</Button>
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      height="100vh"
+      sx={{ backgroundColor: '#f9f9f9' }}
+    >
+      <Paper elevation={3} sx={{ padding: 4, width: 350 }}>
+        <Typography variant="h5" textAlign="center" gutterBottom>
+          Iniciar sesión
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <TextField
+          label="Correo"
+          fullWidth
+          margin="normal"
+          value={correo}
+          onChange={(e) => setCorreo(e.target.value)}
+        />
+        <TextField
+          label="Contraseña"
+          type="password"
+          fullWidth
+          margin="normal"
+          value={contraseña}
+          onChange={(e) => setContraseña(e.target.value)}
+        />
+
+        <Button
+          variant="contained"
+          fullWidth
+          color="primary"
+          sx={{ mt: 2 }}
+          onClick={handleLogin}
+        >
+          Ingresar
+        </Button>
+      </Paper>
     </Box>
   );
 }
+
+export default Login;

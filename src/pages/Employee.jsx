@@ -1,143 +1,115 @@
+// src/pages/Employee.jsx
 import React, { useState, useEffect } from 'react';
 import {
-  Button, MenuItem, Select, InputLabel, FormControl,
-  Typography, TextField
+  Box,
+  Typography,
+  Button,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 
 function Employee() {
-  const [time, setTime] = useState(new Date());
-  const [employees, setEmployees] = useState([]);
-  const [employeeId, setEmployeeId] = useState('');
-  const [lastEntry, setLastEntry] = useState(null);
-  const [lastExit, setLastExit] = useState(null);
-  const [note, setNote] = useState(''); // ✅ Nota de asistencia
+  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+  const token = localStorage.getItem('token');
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState('');
+  const [fecha, setFecha] = useState(new Date());
+  const [registradoHoy, setRegistradoHoy] = useState(false);
 
-  // Reloj en vivo
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    const intervalo = setInterval(() => setFecha(new Date()), 1000);
+    return () => clearInterval(intervalo);
   }, []);
 
-  // Cargar empleados
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/employees`)
-      .then(res => res.json())
-      .then(data => setEmployees(data))
-      .catch(err => console.error('Error cargando empleados:', err));
-  }, []);
+  const marcarEntrada = async () => {
+    setLoading(true);
+    setMensaje('');
 
-  // Cargar asistencia del día actual
-  useEffect(() => {
-    if (!employeeId) return;
-
-    const now = new Date();
-    const month = now.toISOString().slice(0, 7);
-
-    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${employeeId}&month=${month}`)
-      .then(res => res.json())
-      .then(data => {
-        const today = now.toISOString().slice(0, 10);
-        const todayRecords = data.records.filter(r => r.checkIn?.startsWith(today));
-        if (todayRecords.length > 0) {
-          const last = todayRecords[todayRecords.length - 1];
-          setLastEntry(last.checkIn);
-          setLastExit(last.checkOut || null);
-        } else {
-          setLastEntry(null);
-          setLastExit(null);
-        }
-      })
-      .catch(err => {
-        console.error('Error cargando asistencia:', err);
-        setLastEntry(null);
-        setLastExit(null);
-      });
-  }, [employeeId]);
-
-  const mark = async (type) => {
-    if (!employeeId) {
-      alert('Selecciona un empleado antes de marcar.');
-      return;
-    }
-
-    const now = new Date();
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
+      const res = await fetch('http://localhost:3001/attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId,
-          [type]: now,
-          note: note.trim()
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ employeeId: usuario.id }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar');
 
-      if (type === 'checkIn') {
-        setLastEntry(now.toISOString());
-      } else {
-        setLastExit(now.toISOString());
-      }
+      setMensaje('✅ Entrada registrada correctamente');
+      setRegistradoHoy(true);
+    } catch (err) {
+      setMensaje(`❌ ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setNote(''); // ✅ Limpiar nota después de marcar
-      alert('Marcado con éxito');
-    } catch (error) {
-      console.error('Error al marcar asistencia:', error);
-      alert('Error al marcar asistencia');
+  const marcarSalida = async () => {
+    setLoading(true);
+    setMensaje('');
+
+    try {
+      const res = await fetch('http://localhost:3001/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ employeeId: usuario.id, checkOut: new Date() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar salida');
+
+      setMensaje('✅ Salida registrada correctamente');
+    } catch (err) {
+      setMensaje(`❌ ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>{time.toLocaleTimeString()}</h2>
+    <Box p={4} textAlign="center">
+      <Typography variant="h4" mb={2}>
+        Bienvenido, {usuario.nombre}
+      </Typography>
 
-      <FormControl fullWidth style={{ marginBottom: 20 }}>
-        <InputLabel>Selecciona un empleado</InputLabel>
-        <Select
-          value={employeeId}
-          label="Empleado"
-          onChange={(e) => setEmployeeId(e.target.value)}
+      <Typography variant="h6" color="text.secondary" mb={3}>
+        {fecha.toLocaleTimeString()} - {fecha.toLocaleDateString()}
+      </Typography>
+
+      {mensaje && <Alert severity={mensaje.includes('✅') ? 'success' : 'error'}>{mensaje}</Alert>}
+
+      <Box mt={3}>
+        <Button
+          variant="contained"
+          color="success"
+          onClick={marcarEntrada}
+          disabled={loading || registradoHoy}
+          sx={{ mr: 2 }}
         >
-          {employees.map((emp) => (
-            <MenuItem key={emp._id} value={emp._id}>
-              {emp.firstName} {emp.lastName}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          Marcar Entrada
+        </Button>
+        <Button
+          variant="contained"
+          color="warning"
+          onClick={marcarSalida}
+          disabled={loading}
+        >
+          Marcar Salida
+        </Button>
+      </Box>
 
-      <TextField
-        fullWidth
-        label="Nota de asistencia (opcional)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        style={{ marginBottom: 20 }}
-      />
-
-      {lastEntry && (
-        <Typography color="primary" style={{ marginBottom: 5 }}>
-          👉 Última entrada: {new Date(lastEntry).toLocaleTimeString()}
-        </Typography>
+      {loading && (
+        <Box mt={2}>
+          <CircularProgress />
+        </Box>
       )}
-      {lastExit && (
-        <Typography color="secondary" style={{ marginBottom: 20 }}>
-          👉 Última salida: {new Date(lastExit).toLocaleTimeString()}
-        </Typography>
-      )}
-
-      <Button variant="contained" onClick={() => mark('checkIn')} disabled={!employeeId}>
-        Entrada
-      </Button>
-      <Button
-        variant="contained"
-        onClick={() => mark('checkOut')}
-        disabled={!employeeId}
-        style={{ marginLeft: 10 }}
-      >
-        Salida
-      </Button>
-    </div>
+    </Box>
   );
 }
 

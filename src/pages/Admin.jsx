@@ -1,120 +1,173 @@
 import React, { useState, useEffect } from 'react';
 import {
-  DataGrid
-} from '@mui/x-data-grid';
-import {
-  Modal, Button, Box, Typography
+  Box,
+  Typography,
+  Button,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  CircularProgress,
+  Alert
 } from '@mui/material';
-import EmpleadoForm from '../components/EmpleadoForm';
+import { Edit, Delete, History } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import api from '../api/axios';
 
 function Admin() {
-  const [rows, setRows] = useState([]);
-  const [openView, setOpenView] = useState(false);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [newEmp, setNewEmp] = useState({
-    firstName: '',
-    lastName: '',
-    identityNumber: '',
-    phone: '',
-    email: '',
-    photo: null
-  });
+  const [empleados, setEmpleados] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({});
+  const [modo, setModo] = useState('crear');
+  const [mensaje, setMensaje] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/employees`)
-      .then(res => res.json())
-      .then(setRows)
-      .catch(() => setRows([]));
-  }, []);
+  const navigate = useNavigate(); // 🔁 Para redireccionar al historial
 
-  const handleCreate = async () => {
-    const formData = new FormData();
-    for (const key in newEmp) {
-      if (newEmp[key]) formData.append(key, newEmp[key]);
+  const cargarEmpleados = async () => {
+    try {
+      const res = await api.get('/employees');
+      setEmpleados(res.data);
+    } catch (err) {
+      console.error('Error al cargar empleados:', err);
+      setMensaje('❌ No se pudo cargar la lista de empleados');
     }
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/employees`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const data = await res.json();
-    setRows([...rows, data]);
-    setOpenCreate(false);
-    setNewEmp({
-      firstName: '',
-      lastName: '',
-      identityNumber: '',
-      phone: '',
-      email: '',
-      photo: null
-    });
   };
 
-  const columns = [
-    { field: 'firstName', headerName: 'Nombre', width: 130 },
-    { field: 'lastName', headerName: 'Apellido', width: 130 },
-    { field: 'identityNumber', headerName: 'ID', width: 100 },
-    { field: 'phone', headerName: 'Teléfono', width: 130 },
-    { field: 'email', headerName: 'Correo', width: 180 },
-    {
-      field: 'historial',
-      headerName: 'Historial',
-      width: 150,
-      renderCell: (params) => (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => window.location.href = `/historial/${params.row._id}`}
-        >
-          Ver Historial
-        </Button>
-      )
+  useEffect(() => {
+    cargarEmpleados();
+  }, []);
+
+  const handleOpen = (empleado = {}) => {
+    setForm(empleado);
+    setModo(empleado._id ? 'editar' : 'crear');
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setForm({});
+    setOpen(false);
+  };
+
+  const guardar = async () => {
+    setLoading(true);
+    setMensaje('');
+
+    try {
+      if (modo === 'crear') {
+        await api.post('/employees', form);
+      } else {
+        await api.put(`/employees/${form._id}`, form);
+      }
+
+      await cargarEmpleados();
+      setMensaje('✅ Guardado correctamente');
+      handleClose();
+    } catch (err) {
+      console.error('Error al guardar:', err);
+      setMensaje('❌ Error al guardar');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const eliminar = async (id) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este empleado?')) return;
+
+    try {
+      await api.delete(`/employees/${id}`);
+      await cargarEmpleados();
+    } catch (err) {
+      console.error('Error al eliminar:', err);
+      setMensaje('❌ Error al eliminar');
+    }
+  };
 
   return (
-    <Box p={3}>
-      <Typography variant="h4" gutterBottom>Admin</Typography>
-      <Button variant="contained" onClick={() => setOpenCreate(true)}>
-        Crear Empleado
-      </Button>
+    <Box p={4}>
+      <Typography variant="h4" mb={3}>Panel de Administración</Typography>
 
-      <Box mt={3} style={{ height: 400, width: '100%' }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row._id}
-          onRowClick={(params) => {
-            setSelected(params.row);
-            setOpenView(true);
-          }}
-        />
-      </Box>
+      <Button variant="contained" onClick={() => handleOpen()}>+ Agregar empleado</Button>
 
-      <Modal open={openView} onClose={() => setOpenView(false)}>
-        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
-          {selected && (
-            <>
-              <h3>{selected.firstName} {selected.lastName}</h3>
-              <p>ID: {selected.identityNumber}</p>
-              <p>Tel: {selected.phone}</p>
-              <p>Email: {selected.email}</p>
-            </>
-          )}
-        </Box>
-      </Modal>
+      {mensaje && <Alert severity={mensaje.includes('✅') ? 'success' : 'error'} sx={{ mt: 2 }}>{mensaje}</Alert>}
 
-      <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
-        <Box sx={{ background: '#fff', padding: 3, margin: '10% auto', maxWidth: 400 }}>
-          <EmpleadoForm
-            formData={newEmp}
-            onChange={setNewEmp}
-            onSubmit={handleCreate}
+      <Table sx={{ mt: 3 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Nombre</TableCell>
+            <TableCell>Correo</TableCell>
+            <TableCell>Teléfono</TableCell>
+            <TableCell>Acciones</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {empleados.map((emp) => (
+            <TableRow key={emp._id}>
+              <TableCell>{emp.firstName} {emp.lastName}</TableCell>
+              <TableCell>{emp.email}</TableCell>
+              <TableCell>{emp.phone}</TableCell>
+              <TableCell>
+                <IconButton onClick={() => handleOpen(emp)}><Edit /></IconButton>
+                <IconButton onClick={() => eliminar(emp._id)}><Delete /></IconButton>
+                <IconButton
+                  onClick={() => navigate(`/historial/${emp._id}`)}
+                  color="primary"
+                  title="Ver Historial"
+                >
+                  <History />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>{modo === 'crear' ? 'Crear Empleado' : 'Editar Empleado'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Nombre"
+            fullWidth
+            margin="dense"
+            value={form.firstName || ''}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
           />
-        </Box>
-      </Modal>
+          <TextField
+            label="Apellido"
+            fullWidth
+            margin="dense"
+            value={form.lastName || ''}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+          />
+          <TextField
+            label="Correo"
+            fullWidth
+            margin="dense"
+            value={form.email || ''}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <TextField
+            label="Teléfono"
+            fullWidth
+            margin="dense"
+            value={form.phone || ''}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancelar</Button>
+          <Button onClick={guardar} disabled={loading}>
+            {loading ? <CircularProgress size={20} /> : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

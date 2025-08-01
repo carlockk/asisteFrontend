@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
-  Pagination, Button
+  Pagination, Button, Tabs, Tab, Paper
 } from '@mui/material';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/material_blue.css';
@@ -9,59 +9,54 @@ import { useParams } from 'react-router-dom';
 
 function HistorialEmpleado() {
   const { id } = useParams();
-  const [records, setRecords] = useState([]);
-  const [filteredRecords, setFilteredRecords] = useState([]);
-  const [range, setRange] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [tab, setTab] = useState(0);
+
+  // Asistencia
+  const [recordsAsistencia, setRecordsAsistencia] = useState([]);
+  const [filteredAsistencia, setFilteredAsistencia] = useState([]);
+  const [rangeAsistencia, setRangeAsistencia] = useState([]);
+  const [totalAsistencia, setTotalAsistencia] = useState(0);
+  const [pageAsistencia, setPageAsistencia] = useState(1);
+
+  // Checklist Aseo
+  const [checklists, setChecklists] = useState([]);
+  const [pageAseo, setPageAseo] = useState(1);
+
   const rowsPerPage = 15;
 
-  // Cargar historial mensual por defecto
+  // 🔹 Historial de Asistencia
   useEffect(() => {
-    if (!id || range.length === 2) return;
+    if (!id || rangeAsistencia.length === 2) return;
 
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const formattedMonth = `${year}-${month}`;
 
-    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${formattedMonth}`)
+    fetch(`${import.meta.env.VITE_API_URL}/attendance?employeeId=${id}&month=${year}-${month}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data.records)) {
-          const enriched = data.records.map(r => ({
-            ...r,
-            checkIn: r.checkIn ? new Date(r.checkIn) : null,
-            checkOut: r.checkOut ? new Date(r.checkOut) : null
-          }));
-
-          const ordered = [...enriched].sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
-
-          setRecords(ordered);
-          setFilteredRecords(ordered);
-          setTotal(data.total || 0);
-        } else {
-          setRecords([]);
-          setFilteredRecords([]);
-          setTotal(0);
-        }
+        const enriched = (data.records || []).map(r => ({
+          ...r,
+          checkIn: r.checkIn ? new Date(r.checkIn) : null,
+          checkOut: r.checkOut ? new Date(r.checkOut) : null
+        }));
+        const ordered = enriched.sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
+        setRecordsAsistencia(ordered);
+        setFilteredAsistencia(ordered);
+        setTotalAsistencia(data.total || 0);
       })
-      .catch(err => {
-        console.error('Error cargando historial:', err);
-        setRecords([]);
-        setFilteredRecords([]);
-        setTotal(0);
+      .catch(() => {
+        setRecordsAsistencia([]);
+        setFilteredAsistencia([]);
+        setTotalAsistencia(0);
       });
-  }, [id, range]);
+  }, [id, rangeAsistencia]);
 
-  // Cargar historial por rango
   useEffect(() => {
-    if (!id || range.length !== 2) return;
+    if (!id || rangeAsistencia.length !== 2) return;
 
-    const start = range[0];
-    const end = range[1];
+    const [start, end] = rangeAsistencia;
     const dates = [];
-
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d).toISOString().split('T')[0]);
     }
@@ -73,113 +68,148 @@ function HistorialEmpleado() {
     })
       .then(res => res.json())
       .then(data => {
-        if (!Array.isArray(data)) {
-          setRecords([]);
-          setFilteredRecords([]);
-          setTotal(0);
-          return;
-        }
-
         const enriched = data.map(r => {
           const checkIn = r.checkIn ? new Date(r.checkIn) : null;
           const checkOut = r.checkOut ? new Date(r.checkOut) : null;
           let totalHours = r.totalHours;
-
           if (!totalHours && checkIn && checkOut) {
             const diff = checkOut - checkIn;
             totalHours = diff / (1000 * 60 * 60);
           }
-
           return { ...r, checkIn, checkOut, totalHours: totalHours || 0 };
         });
 
-        const ordered = [...enriched].sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
-
-        setRecords(ordered);
-        setFilteredRecords(ordered);
+        const ordered = enriched.sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
+        setRecordsAsistencia(ordered);
+        setFilteredAsistencia(ordered);
         const sum = ordered.reduce((acc, r) => acc + (r.totalHours || 0), 0);
-        setTotal(sum);
-        setCurrentPage(1);
+        setTotalAsistencia(sum);
+        setPageAsistencia(1);
       });
-  }, [id, range]);
-
-  // Paginación
-  const indexOfLast = currentPage * rowsPerPage;
-  const indexOfFirst = indexOfLast - rowsPerPage;
-  const currentRows = filteredRecords.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
+  }, [id, rangeAsistencia]);
 
   const limpiarFiltro = () => {
-    setRange([]);
-    setFilteredRecords(records);
-    setTotal(records.reduce((acc, r) => acc + (r.totalHours || 0), 0));
-    setCurrentPage(1);
+    setRangeAsistencia([]);
+    setFilteredAsistencia(recordsAsistencia);
+    setTotalAsistencia(recordsAsistencia.reduce((acc, r) => acc + (r.totalHours || 0), 0));
+    setPageAsistencia(1);
   };
 
+  // 🔹 Historial de Aseo
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${import.meta.env.VITE_API_URL}/aseo/historial/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        const ordenados = data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        setChecklists(ordenados);
+        setPageAseo(1);
+      })
+      .catch(() => setChecklists([]));
+  }, [id]);
+
+  const currentAsistencia = filteredAsistencia.slice((pageAsistencia - 1) * rowsPerPage, pageAsistencia * rowsPerPage);
+  const currentAseo = checklists.slice((pageAseo - 1) * rowsPerPage, pageAseo * rowsPerPage);
+
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>Historial de Asistencia</Typography>
+    <Paper elevation={3} style={{ padding: 24 }}>
+      <Typography variant="h5" gutterBottom>Historial del Empleado</Typography>
 
-      <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
-        <Flatpickr
-          options={{ mode: 'range', dateFormat: 'Y-m-d' }}
-          onChange={(selectedDates) => setRange(selectedDates)}
-          placeholder="Selecciona rango de fechas"
-          className="flatpickr-input"
-          style={{
-            padding: '16.5px 14px',
-            border: '1px solid #c4c4c4',
-            borderRadius: 4,
-            minWidth: 220
-          }}
-        />
-        {range.length > 0 && (
-          <Button onClick={limpiarFiltro} color="secondary" variant="outlined">
-            Limpiar Filtro
-          </Button>
-        )}
-      </Box>
+      <Tabs value={tab} onChange={(e, newVal) => setTab(newVal)} textColor="primary" indicatorColor="primary">
+        <Tab label="Asistencia" />
+        <Tab label="Checklist Aseo" />
+      </Tabs>
 
-      <Table>
- <TableHead>
-  <TableRow>
-    <TableCell>Fecha</TableCell>
-    <TableCell>Entrada</TableCell>
-    <TableCell>Salida</TableCell>
-    <TableCell>Horas</TableCell>
-    <TableCell>Nota</TableCell> {/* ✅ nueva columna */}
-  </TableRow>
-</TableHead>
-<TableBody>
-  {currentRows.map((r, i) => (
-    <TableRow key={i}>
-      <TableCell>{r.checkIn ? r.checkIn.toLocaleDateString() : '-'}</TableCell>
-      <TableCell>{r.checkIn ? r.checkIn.toLocaleTimeString() : '-'}</TableCell>
-      <TableCell>{r.checkOut ? r.checkOut.toLocaleTimeString() : '-'}</TableCell>
-      <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
-      <TableCell>{r.note || '-'}</TableCell> {/* ✅ celda nota */}
-    </TableRow>
-  ))}
-</TableBody>
-      </Table>
+      {tab === 0 && (
+        <Box mt={3}>
+          <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
+            <Flatpickr
+              options={{ mode: 'range', dateFormat: 'Y-m-d' }}
+              onChange={setRangeAsistencia}
+              placeholder="Selecciona rango de fechas"
+              className="flatpickr-input"
+              style={{
+                padding: '16.5px 14px',
+                border: '1px solid #c4c4c4',
+                borderRadius: 4,
+                minWidth: 220
+              }}
+            />
+            {rangeAsistencia.length > 0 && (
+              <Button onClick={limpiarFiltro} color="secondary" variant="outlined">
+                Limpiar Filtro
+              </Button>
+            )}
+          </Box>
 
-      {totalPages > 1 && (
-        <Box mt={2} display="flex" justifyContent="center">
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={(e, val) => setCurrentPage(val)}
-            color="primary"
-          />
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Entrada</TableCell>
+                <TableCell>Salida</TableCell>
+                <TableCell>Horas</TableCell>
+                <TableCell>Nota</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {currentAsistencia.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell>{r.checkIn?.toLocaleDateString() || '-'}</TableCell>
+                  <TableCell>{r.checkIn?.toLocaleTimeString() || '-'}</TableCell>
+                  <TableCell>{r.checkOut?.toLocaleTimeString() || '-'}</TableCell>
+                  <TableCell>{(r.totalHours || 0).toFixed(2)}</TableCell>
+                  <TableCell>{r.note || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {filteredAsistencia.length > rowsPerPage && (
+            <Box mt={2} display="flex" justifyContent="center">
+              <Pagination count={Math.ceil(filteredAsistencia.length / rowsPerPage)} page={pageAsistencia} onChange={(e, v) => setPageAsistencia(v)} />
+            </Box>
+          )}
+
+          <Box mt={2}>
+            <Typography><strong>Total Horas:</strong> {totalAsistencia.toFixed(2)} hrs</Typography>
+          </Box>
         </Box>
       )}
 
-      <Box mt={2}>
-        <Typography variant="subtitle1">
-          <strong>Total Horas:</strong> {total.toFixed(2)} hrs
-        </Typography>
-      </Box>
-    </Box>
+      {tab === 1 && (
+        <Box mt={3}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Creador</TableCell>
+                <TableCell>Total Ítems</TableCell>
+                <TableCell>Completados</TableCell>
+                <TableCell>Observación</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {currentAseo.map((c, i) => (
+                <TableRow key={i}>
+                  <TableCell>{new Date(c.fecha).toLocaleDateString()}</TableCell>
+                  <TableCell>{c.creadoPor?.nombre || 'Desconocido'}</TableCell>
+                  <TableCell>{c.items?.length || 0}</TableCell>
+                  <TableCell>{c.items?.filter(i => i.cumple).length || 0}</TableCell>
+                  <TableCell>{c.observaciones || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {checklists.length > rowsPerPage && (
+            <Box mt={2} display="flex" justifyContent="center">
+              <Pagination count={Math.ceil(checklists.length / rowsPerPage)} page={pageAseo} onChange={(e, v) => setPageAseo(v)} />
+            </Box>
+          )}
+        </Box>
+      )}
+    </Paper>
   );
 }
 
